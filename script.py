@@ -1,21 +1,22 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 import yt_dlp
 from pytubefix import YouTube
 import os
 import uuid
+import time
 from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # Configuration
-DOWNLOAD_DIR = "D:\\Harshil\\Python - Apna College\\downloaded videos"
+DOWNLOAD_DIR = "Downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 @app.route('/download', methods=['POST'])
 def download():
     # Get request data
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     url = data.get('url')
     format_type = data.get('format', 'video')  # Default to 'video'
 
@@ -27,6 +28,8 @@ def download():
         }), 400
 
     try:
+        filename = None
+
         # VIDEO DOWNLOAD
         if format_type == 'video':
             ydl_opts = {
@@ -37,10 +40,7 @@ def download():
             }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
-                return jsonify({
-                    'success': True,
-                    'message': f"🎥 Downloaded: {info.get('title', 'your video')}"
-                })
+                filename = f"{info.get('title', 'video')}.mp4"
 
         # AUDIO DOWNLOAD
         elif format_type == 'audio':
@@ -48,10 +48,6 @@ def download():
             audio = yt.streams.filter(only_audio=True).first()
             filename = f"{yt.title.replace('/', '_')}.mp3"  # Sanitize filename
             audio.download(output_path=DOWNLOAD_DIR, filename=filename)
-            return jsonify({
-                'success': True,
-                'message': f"🎧 Downloaded: {yt.title}"
-            })
 
         # PLAYLIST DOWNLOAD
         elif format_type == 'playlist':
@@ -62,10 +58,14 @@ def download():
             }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
-                return jsonify({
-                    'success': True,
-                    'message': f"📂 Downloaded playlist: {info.get('title', '')} ({info.get('playlist_count', 0)} videos)"
-                })
+                filename = f"{info.get('title', '')}.mp4"
+
+        if filename:
+            return jsonify({
+                'success': True,
+                'message': f"✅ Download complete!",
+                'download_url': f"/serve/{filename}"
+            })
 
     except Exception as e:
         # Handle common errors
@@ -75,10 +75,13 @@ def download():
         elif "Unsupported URL" in error_msg:
             return jsonify({'success': False, 'message': '❌ Invalid YouTube URL'}), 400
         else:
-            return jsonify({
-                'success': False,
-                'message': f'❌ Download failed: {error_msg}'
-            }), 500
+            return jsonify({'success': False, 'message': f'❌ Download failed: {error_msg}'}), 500
+
+# Serve downloaded files for user download
+@app.route('/serve/<filename>')
+def serve_file(filename):
+    file_path = os.path.join(DOWNLOAD_DIR, filename)
+    return send_file(file_path, as_attachment=True)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=10000)
