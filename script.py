@@ -1,8 +1,7 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, send_from_directory
 import yt_dlp
 from pytubefix import YouTube
 import os
-import uuid
 import time
 from flask_cors import CORS
 
@@ -64,7 +63,7 @@ def download():
             return jsonify({
                 'success': True,
                 'message': f"✅ Download complete!",
-                'download_url': f"/serve/{filename}"
+                'download_url': f"/Downloads/{filename}"
             })
 
     except Exception as e:
@@ -78,17 +77,9 @@ def download():
             return jsonify({'success': False, 'message': f'❌ Download failed: {error_msg}'}), 500
 
 # Serve downloaded files for user download
-@app.route('/serve/<filename>')
-def serve_file(filename):
-    file_path = os.path.join(DOWNLOAD_DIR, filename)
-    return send_file(file_path, as_attachment=True)
-
-from flask import send_from_directory
-
 @app.route('/Downloads/<filename>')
 def serve_file(filename):
     return send_from_directory(DOWNLOAD_DIR, filename, as_attachment=True)
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
