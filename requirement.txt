@@ -1,4 +1,0 @@
-Flask
-yt_dlp
-pytubefix
-gunicorn
