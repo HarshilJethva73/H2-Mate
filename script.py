@@ -82,4 +82,4 @@ def serve_file(filename):
     return send_from_directory(DOWNLOAD_DIR, filename, as_attachment=True)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    app.run()
