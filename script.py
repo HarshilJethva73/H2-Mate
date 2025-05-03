@@ -4,9 +4,26 @@ from pytubefix import YouTube
 import os
 import time
 from flask_cors import CORS
+from pytubefix import request
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
+
+cookies_dict = {}
+
+with open("cookies.txt", "r", encoding="utf-8") as f:
+    for line in f:
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        parts = line.split('\t')
+        if len(parts) >= 7:
+            domain, _, path, secure, expiry, name, value = parts
+            cookies_dict[name] = value
+
+
+request._cookies = cookies_dict
+
 
 # Configuration
 DOWNLOAD_DIR = "Downloads"
@@ -31,12 +48,23 @@ def download():
 
         # VIDEO DOWNLOAD
         if format_type == 'video':
+            import logging
+            logging.basicConfig(level=logging.DEBUG)
             ydl_opts = {
-                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]',
+                'format': 'bestvideo[ext=mp4][height<=2160]+bestaudio[ext=m4a]/best[ext=mp4]',
                 'outtmpl': os.path.join(DOWNLOAD_DIR, '%(title)s.%(ext)s'),
-                'quiet': True,
-                'no_warnings': True
+                'quiet': False,
+                'no_warnings': False,
+                'cookiefile': os.path.abspath('cookies.txt'),  # absolute path!
+                'geo_bypass': True,
+                'nocheckcertificate': True,
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Referer': 'https://www.youtube.com/'
+                },
+                'logger': logging.getLogger()
             }
+
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
                 filename = f"{info.get('title', 'video')}.mp4"
@@ -53,7 +81,12 @@ def download():
             ydl_opts = {
                 'format': 'bestvideo+bestaudio/best',
                 'outtmpl': os.path.join(DOWNLOAD_DIR, '%(playlist_title)s/%(title)s.%(ext)s'),
-                'quiet': True
+                'quiet': True,
+                'cookiefile': os.path.abspath('cookies.txt'),
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Referer': 'https://www.youtube.com/'
+                }
             }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
@@ -67,19 +100,25 @@ def download():
             })
 
     except Exception as e:
-        # Handle common errors
-        error_msg = str(e)
-        if "Private video" in error_msg:
-            return jsonify({'success': False, 'message': '❌ Video is private'}), 400
-        elif "Unsupported URL" in error_msg:
-            return jsonify({'success': False, 'message': '❌ Invalid YouTube URL'}), 400
-        else:
-            return jsonify({'success': False, 'message': f'❌ Download failed: {error_msg}'}), 500
+            # Handle common errors
+            error_msg = str(e)
+            if "Private video" in error_msg:
+                return jsonify({'success': False, 'message': '❌ Video is private'}), 400
+            elif "Unsupported URL" in error_msg:
+                return jsonify({'success': False, 'message': '❌ Invalid YouTube URL'}), 400
+            elif "This video is not available" in error_msg or "This content isn’t available" in error_msg:
+                return jsonify({'success': False, 'message': '❌ Video is unavailable (removed, region-restricted, or private)'}), 400
+            else:
+                return jsonify({'success': False, 'message': f'❌ Download failed: {error_msg}'}), 500
 
 # Serve downloaded files for user download
 @app.route('/Downloads/<filename>')
 def serve_file(filename):
     return send_from_directory(DOWNLOAD_DIR, filename, as_attachment=True)
+
+@app.route('/')
+def home():
+    return "H2-Mate API is running. Use /download endpoint to download videos."
 
 if __name__ == '__main__':
     app.run()
