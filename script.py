@@ -3,10 +3,8 @@ import yt_dlp
 from pytubefix import YouTube
 import os
 import time
-from flask_cors import CORS
-
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+# Removed CORS since frontend and backend are served from the same domain
 
 # Removed import of request from pytubefix to avoid conflict with Flask's request
 
