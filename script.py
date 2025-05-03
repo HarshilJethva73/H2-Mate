@@ -4,10 +4,11 @@ from pytubefix import YouTube
 import os
 import time
 from flask_cors import CORS
-from pytubefix import request
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
+
+# Removed import of request from pytubefix to avoid conflict with Flask's request
 
 cookies_dict = {}
 
@@ -21,8 +22,8 @@ with open("cookies.txt", "r", encoding="utf-8") as f:
             domain, _, path, secure, expiry, name, value = parts
             cookies_dict[name] = value
 
-
-request._cookies = cookies_dict
+# Removed setting request._cookies because Flask's request object should be used for HTTP requests
+# Cookies are passed to yt_dlp via the 'cookiefile' option in ydl_opts
 
 
 # Configuration
