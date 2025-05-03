@@ -117,9 +117,11 @@ def download():
 def serve_file(filename):
     return send_from_directory(DOWNLOAD_DIR, filename, as_attachment=True)
 
+from flask import send_file
+
 @app.route('/')
 def home():
-    return "H2-Mate API is running. Use /download endpoint to download videos."
+    return send_file('index.html')
 
 if __name__ == '__main__':
     app.run()
