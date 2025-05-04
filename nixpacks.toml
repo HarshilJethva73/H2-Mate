@@ -1,2 +1,5 @@
 [start]
+[packages]
+ffmpeg = "*"
+
 cmd = "gunicorn app:app"
