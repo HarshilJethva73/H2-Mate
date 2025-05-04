@@ -36,7 +36,8 @@ except Exception as e:
 
 # Configuration
 # DOWNLOAD_DIR = os.path.join(os.getcwd(), "Downloads")
-DOWNLOAD_DIR = os.path.join(os.environ["USERPROFILE"], "Downloads")  # For Windows users
+# DOWNLOAD_DIR = os.path.join(os.environ["USERPROFILE"], "Downloads")  # For Windows users
+DOWNLOAD_DIR = os.path.join(os.getcwd(), "Downloads")
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 @app.route('/download', methods=['POST'])
