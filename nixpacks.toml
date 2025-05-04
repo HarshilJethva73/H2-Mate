@@ -1,5 +1,8 @@
 [start]
-[packages]
-ffmpeg = "*"
+[phases.setup]
+commands = [
+  "apt-get update",
+  "apt-get install -y ffmpeg libstdc++6 libffi-dev"
+]
 
-cmd = "gunicorn app:app"
+cmd = "gunicorn script:app --bind 0.0.0.0:8080"
