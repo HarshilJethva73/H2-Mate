@@ -1,8 +1,8 @@
 # Use an official Python runtime as a parent image
-FROM python:3.11-slim
+FROM python:3.11-bullseye
 
 # Install ffmpeg and other dependencies
-RUN apt-get update && apt-get install -y ffmpeg libstdc++ libffi-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get upgrade -y && apt-get install -y ffmpeg libffi-dev && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory in the container
 WORKDIR /app
