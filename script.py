@@ -35,7 +35,8 @@ except Exception as e:
     logger.error(traceback.format_exc())
 
 # Configuration
-DOWNLOAD_DIR = os.path.join(os.getcwd(), "Downloads")
+# DOWNLOAD_DIR = os.path.join(os.getcwd(), "Downloads")
+DOWNLOAD_DIR = os.path.join(os.environ["USERPROFILE"], "Downloads")  # For Windows users
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 @app.route('/download', methods=['POST'])
