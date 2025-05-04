@@ -6,8 +6,10 @@ import time
 import logging
 import traceback
 
+from flask_cors import CORS
+
 app = Flask(__name__)
-# Removed CORS since frontend and backend are served from the same domain
+CORS(app)  # Enable CORS for all routes and origins
 
 # Removed import of request from pytubefix to avoid conflict with Flask's request
 
