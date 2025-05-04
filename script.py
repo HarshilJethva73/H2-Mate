@@ -3,22 +3,32 @@ import yt_dlp
 from pytubefix import YouTube
 import os
 import time
+import logging
+import traceback
+
 app = Flask(__name__)
 # Removed CORS since frontend and backend are served from the same domain
 
 # Removed import of request from pytubefix to avoid conflict with Flask's request
 
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
+logger = logging.getLogger(__name__)
+
 cookies_dict = {}
 
-with open("cookies.txt", "r", encoding="utf-8") as f:
-    for line in f:
-        line = line.strip()
-        if not line or line.startswith('#'):
-            continue
-        parts = line.split('\t')
-        if len(parts) >= 7:
-            domain, _, path, secure, expiry, name, value = parts
-            cookies_dict[name] = value
+try:
+    with open("cookies.txt", "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            parts = line.split('\t')
+            if len(parts) >= 7:
+                domain, _, path, secure, expiry, name, value = parts
+                cookies_dict[name] = value
+except Exception as e:
+    logger.error(f"Failed to read cookies.txt: {e}")
+    logger.error(traceback.format_exc())
 
 # Removed setting request._cookies because Flask's request object should be used for HTTP requests
 # Cookies are passed to yt_dlp via the 'cookiefile' option in ydl_opts
@@ -47,8 +57,6 @@ def download():
 
         # VIDEO DOWNLOAD
         if format_type == 'video':
-            import logging
-            logging.basicConfig(level=logging.DEBUG)
             ydl_opts = {
                 'format': 'bestvideo[ext=mp4][height<=2160]+bestaudio[ext=m4a]/best[ext=mp4]',
                 'outtmpl': os.path.join(DOWNLOAD_DIR, '%(title)s.%(ext)s'),
@@ -61,7 +69,7 @@ def download():
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     'Referer': 'https://www.youtube.com/'
                 },
-                'logger': logging.getLogger()
+                'logger': logger
             }
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -99,16 +107,18 @@ def download():
             })
 
     except Exception as e:
-            # Handle common errors
-            error_msg = str(e)
-            if "Private video" in error_msg:
-                return jsonify({'success': False, 'message': '❌ Video is private'}), 400
-            elif "Unsupported URL" in error_msg:
-                return jsonify({'success': False, 'message': '❌ Invalid YouTube URL'}), 400
-            elif "This video is not available" in error_msg or "This content isn’t available" in error_msg:
-                return jsonify({'success': False, 'message': '❌ Video is unavailable (removed, region-restricted, or private)'}), 400
-            else:
-                return jsonify({'success': False, 'message': f'❌ Download failed: {error_msg}'}), 500
+        logger.error(f"Download error: {e}")
+        logger.error(traceback.format_exc())
+        # Handle common errors
+        error_msg = str(e)
+        if "Private video" in error_msg:
+            return jsonify({'success': False, 'message': '❌ Video is private'}), 400
+        elif "Unsupported URL" in error_msg:
+            return jsonify({'success': False, 'message': '❌ Invalid YouTube URL'}), 400
+        elif "This video is not available" in error_msg or "This content isn’t available" in error_msg:
+            return jsonify({'success': False, 'message': '❌ Video is unavailable (removed, region-restricted, or private)'}), 400
+        else:
+            return jsonify({'success': False, 'message': f'❌ Download failed: {error_msg}'}), 500
 
 # Serve downloaded files for user download
 @app.route('/Downloads/<filename>')
