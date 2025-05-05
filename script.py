@@ -11,7 +11,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes and origins
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger(__name__)
 
 cookies_dict = {}
@@ -34,9 +34,17 @@ except Exception as e:
     logger.error(f"Failed to read cookies.txt: {e}")
     logger.error(traceback.format_exc())
 
+import platform
+from pathlib import Path
+
 # Configuration
-DOWNLOAD_DIR = os.path.join(os.getcwd(), "Downloads")
-# DOWNLOAD_DIR = os.path.join(os.environ["USERPROFILE"], "Downloads")  # For Windows users
+if platform.system() == "Windows":
+    DOWNLOAD_DIR = os.path.join(os.environ.get("USERPROFILE", ""), "Downloads")
+elif platform.system() == "Darwin":  # macOS
+    DOWNLOAD_DIR = os.path.join(Path.home(), "Downloads")
+else:  # Linux and others
+    DOWNLOAD_DIR = os.path.join(Path.home(), "Downloads")
+
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 @app.route('/download', methods=['POST'])
@@ -61,7 +69,7 @@ def download():
             ydl_opts = {
                 'format': 'bestvideo[ext=mp4][height<=2160]+bestaudio[ext=m4a]/best[ext=mp4]',
                 'outtmpl': os.path.join(DOWNLOAD_DIR, '%(title)s.%(ext)s'),
-                'quiet': False,
+                'quiet': True,
                 'no_warnings': False,
                 'cookiefile': os.path.abspath('cookies.txt') if os.path.exists('cookies.txt') else None,
                 'geo_bypass': True,

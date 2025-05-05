@@ -219,8 +219,7 @@
   spinner.classList.remove("hidden");
 
   try {
-// const response = await fetch("https://h2-mate-harshil-jethva.up.railway.app/download", {
-const response = await fetch("https://h2-mate-xzzb.onrender.com/download", {
+const response = await fetch("/download", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url, format })
@@ -231,6 +230,19 @@ const response = await fetch("https://h2-mate-xzzb.onrender.com/download", {
     if (result.success) {
       statusMessage.textContent = "✅ Downloaded successfully!";
       statusMessage.style.color = "green";
+
+      // Trigger file download
+      if (result.download_url) {
+        const link = document.createElement('a');
+        // Encode URI to handle spaces and special characters
+        link.href = encodeURI(result.download_url);
+        // Extract filename from URL and set as download attribute
+        const urlParts = result.download_url.split('/');
+        link.download = urlParts[urlParts.length - 1] || '';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
     } else {
       statusMessage.textContent = `❌ Error: ${result.message}`;
       statusMessage.style.color = "red";

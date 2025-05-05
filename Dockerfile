@@ -20,4 +20,4 @@ EXPOSE 8080
 ENV FLASK_APP=script.py
 
 # Run the application
-CMD ["gunicorn", "script:app", "--bind", "0.0.0.0:8080"]
+CMD ["gunicorn", "script:app", "--bind", "0.0.0.0:8080", "--timeout", "300"]
