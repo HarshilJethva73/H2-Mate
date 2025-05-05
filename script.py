@@ -95,7 +95,8 @@ def download():
             if filepath and os.path.exists(filepath):
                 # Send file as attachment and show success message after download
                 response = send_file(filepath, as_attachment=True, download_name=filename)
-                response.headers['X-Download-Status'] = '✅ Downloaded successfully!'
+                # Remove the custom header to avoid invalid HTTP header error
+                # response.headers['X-Download-Status'] = '✅ Downloaded successfully!'
                 return response
             else:
                 logger.error(f"File not found at path: {filepath}")
