@@ -47,30 +47,28 @@ else:  # Linux and others
 
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
+import tempfile
+from flask import send_file
+
 @app.route('/download', methods=['POST'])
 def download():
-    # Get request data
     data = request.get_json(silent=True) or {}
     url = data.get('url')
-    format_type = data.get('format', 'video')  # Default to 'video'
+    format_type = data.get('format', 'video')
 
-    # Validate input
     if not url:
-        return jsonify({
-            'success': False,
-            'message': '❌ URL is required'
-        }), 400
+        return jsonify({'success': False, 'message': '❌ URL is required'}), 400
 
     try:
-        filename = None
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filename = None
+            filepath = None
 
-        # VIDEO DOWNLOAD
-        if format_type == 'video':
             ydl_opts = {
-                'format': 'bestvideo[ext=mp4][height<=2160]+bestaudio[ext=m4a]/best[ext=mp4]',
-                'outtmpl': os.path.join(DOWNLOAD_DIR, '%(title)s.%(ext)s'),
+                'format': 'bestvideo[ext=mp4][height<=2160]+bestaudio[ext=m4a]/best[ext=mp4]' if format_type == 'video' else 'bestaudio/best',
+                'outtmpl': os.path.join(tmpdir, '%(title)s.%(ext)s'),
                 'quiet': True,
-                'no_warnings': False,
+                'no_warnings': True,
                 'cookiefile': os.path.abspath('cookies.txt') if os.path.exists('cookies.txt') else None,
                 'geo_bypass': True,
                 'nocheckcertificate': True,
@@ -83,42 +81,20 @@ def download():
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
-                filename = f"{info.get('title', 'video')}.mp4"
+                filename = f"{info.get('title', 'video')}.{info.get('ext', 'mp4')}"
+                filepath = os.path.join(tmpdir, filename)
 
-        # AUDIO DOWNLOAD
-        elif format_type == 'audio':
-            yt = YouTube(url)
-            audio = yt.streams.filter(only_audio=True).first()
-            filename = f"{yt.title.replace('/', '_')}.mp3"  # Sanitize filename
-            audio.download(output_path=DOWNLOAD_DIR, filename=filename)
-
-        # PLAYLIST DOWNLOAD
-        elif format_type == 'playlist':
-            ydl_opts = {
-                'format': 'bestvideo+bestaudio/best',
-                'outtmpl': os.path.join(DOWNLOAD_DIR, '%(playlist_title)s/%(title)s.%(ext)s'),
-                'quiet': True,
-                'cookiefile': os.path.abspath('cookies.txt') if os.path.exists('cookies.txt') else None,
-                'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Referer': 'https://www.youtube.com/'
-                }
-            }
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                filename = f"{info.get('title', '')}.mp4"
-
-        if filename:
-            return jsonify({
-                'success': True,
-                'message': f"✅ Download complete!",
-                'download_url': f"/Downloads/{filename}"
-            })
+            if filepath and os.path.exists(filepath):
+                # Send file as attachment and show success message after download
+                response = send_file(filepath, as_attachment=True, download_name=filename)
+                response.headers['X-Download-Status'] = '✅ Downloaded successfully!'
+                return response
+            else:
+                return jsonify({'success': False, 'message': '❌ Download failed: file not found'}), 500
 
     except Exception as e:
         logger.error(f"Download error: {e}")
         logger.error(traceback.format_exc())
-        # Handle common errors
         error_msg = str(e)
         if "Private video" in error_msg:
             return jsonify({'success': False, 'message': '❌ Video is private'}), 400
@@ -139,5 +115,5 @@ def home():
     return send_file('index.html')
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8080))
+    port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
