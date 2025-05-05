@@ -83,6 +83,14 @@ def download():
                 info = ydl.extract_info(url, download=True)
                 filename = f"{info.get('title', 'video')}.{info.get('ext', 'mp4')}"
                 filepath = os.path.join(tmpdir, filename)
+                logger.info(f"Downloaded file path: {filepath}")
+                if not os.path.exists(filepath):
+                    # Try to find the file in tmpdir if filename is different
+                    files = os.listdir(tmpdir)
+                    logger.info(f"Files in tmpdir: {files}")
+                    if files:
+                        filepath = os.path.join(tmpdir, files[0])
+                        filename = files[0]
 
             if filepath and os.path.exists(filepath):
                 # Send file as attachment and show success message after download
@@ -90,6 +98,7 @@ def download():
                 response.headers['X-Download-Status'] = '✅ Downloaded successfully!'
                 return response
             else:
+                logger.error(f"File not found at path: {filepath}")
                 return jsonify({'success': False, 'message': '❌ Download failed: file not found'}), 500
 
     except Exception as e:
