@@ -23,7 +23,7 @@ os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 @app.route('/')
 def home():
-    return "🎬 YouTube Downloader Backend is running."
+    return index.html
 
 @app.route('/download', methods=['POST'])
 def download():
