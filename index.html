@@ -116,6 +116,7 @@
 </head>
 
 <body class="transition-colors duration-300">
+
   <!-- Navbar -->
   <header class="shadow-md sticky top-0 z-50">
     <h1 class="text-2xl font-bold tracking-tight">🎬 H2 Mate Media Downloader</h1>
@@ -137,8 +138,8 @@
       <h2 class="text-2xl font-semibold mb-6">Download Video / Audio / Playlist</h2>
       <form id="downloadForm" class="space-y-5">
         <input type="url" id="urlInput" placeholder="Paste video URL here" required
-        class="w-full px-4 py-3 rounded-md bg-[var(--base-variant)] text-[var(--text-color)] border border-[color:var(--primary-color)] focus:outline-none focus:ring-2 focus:ring-blue-500 transition"> 
-      <select id="formatSelect" class="w-full px-4 py-3 rounded-md bg-[var(--base-variant)] text-[var(--text-color)] border border-[color:var(--primary-color)] focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+        class="w-full px-4 py-3 rounded-md bg-[var(--base-variant)] text-[var(--text-color)] border border-[var(--primary-color)] focus:outline-none focus:ring-2 focus:ring-blue-500 transition"> 
+        <select id="formatSelect" class="w-full px-4 py-3 rounded-md bg-[var(--base-variant)] text-[var(--text-color)] border border-[var(--primary-color)] focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
           <option value="video">🎥 Video (MP4)</option>
           <option value="audio">🎧 Audio (MP3)</option>
           <option value="playlist">📂 Playlist</option>
@@ -147,11 +148,13 @@
         <button type="submit"
           class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition-all duration-200 flex justify-center items-center">
           <span id="buttonText">Download</span>
-          <svg id="spinner" class="ml-2 w-5 h-5 text-white animate-spin hidden" xmlns="http://www.w3.org/2000/svg" fill="none"
+          <svg id="spinner" class="ml-2 w-5 h-5 text-white animate-spin hidden"
+            xmlns="http://www.w3.org/2000/svg" fill="none"
             viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor"
-              d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 018 8h-4l3 3 3-3h-4a8 8 0 01-8 8v-4l-3 3 3 3v-4a8 8 0 01-8-8z"></path>
+              d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 018 8h-4l3 3 3-3h-4a8 8 0 01-8 8v-4l-3 3 3 3v-4a8 8 0 01-8-8z">
+            </path>
           </svg>
         </button>
 
@@ -191,77 +194,69 @@
     const buttonText = document.getElementById("buttonText");
     const spinner = document.getElementById("spinner");
 
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      const url = urlInput.value.trim();
+      const format = formatSelect.value;
+      
+      // Clear previous messages
+      statusMessage.textContent = "";
+      statusMessage.style.color = "";
 
-  form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  
-  const url = urlInput.value.trim();
-  const format = formatSelect.value;
-  const statusMessage = document.getElementById("statusMessage");;
-
-  
-  // Clear previous messages
-  statusMessage.textContent = "";
-  statusMessage.style.color = "";
-
-  if (!url) {
-    statusMessage.textContent = "⚠️ Please enter a valid URL";
-    statusMessage.style.color = "orange";
-    return;
-  }
-
-  // Show download started message
-  statusMessage.textContent = "⏳ Download started...";
-  statusMessage.style.color = "var(--text-color)";
-  
-  // Show loading state
-  buttonText.textContent = "Downloading...";
-  spinner.classList.remove("hidden");
-
-  try {
-const response = await fetch("/download", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, format })
-    });
-
-    const result = await response.json();
-    
-    if (result.success) {
-      statusMessage.textContent = "✅ Downloaded successfully!";
-      statusMessage.style.color = "green";
-
-      // Trigger file download
-      if (result.download_url) {
-        const link = document.createElement('a');
-        // Encode URI to handle spaces and special characters
-        link.href = encodeURI(result.download_url);
-        // Extract filename from URL and set as download attribute
-        const urlParts = result.download_url.split('/');
-        link.download = urlParts[urlParts.length - 1] || '';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+      if (!url) {
+        statusMessage.textContent = "⚠️ Please enter a valid URL";
+        statusMessage.style.color = "orange";
+        return;
       }
-    } else {
-      statusMessage.textContent = `❌ Error: ${result.message}`;
-      statusMessage.style.color = "red";
-    }
-  } catch (error) {
-    statusMessage.textContent = "❌ Failed to connect to server";
-    statusMessage.style.color = "red";
-    console.error("Error:", error);
-  } finally {
-    // Reset button state
-    buttonText.textContent = "Download";
-    spinner.classList.add("hidden");
-  }
-});
 
+      // Show download started message
+      statusMessage.textContent = "⏳ Download started...";
+      statusMessage.style.color = "var(--text-color)";
+      
+      // Show loading state
+      buttonText.textContent = "Downloading...";
+      spinner.classList.remove("hidden");
 
+      try {
+        const response = await fetch("/download", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url, format })
+        });
 
+        const result = await response.json();
+        
+        if (result.success) {
+          statusMessage.textContent = "✅ Downloaded successfully!";
+          statusMessage.style.color = "green";
 
-
+          // Trigger file download
+          if (result.download_url) {
+            const link = document.createElement('a');
+            // Encode URI to handle spaces and special characters
+            link.href = encodeURI(result.download_url);
+            // Extract filename from URL and set as download attribute
+            const urlParts = result.download_url.split('/');
+            link.download = urlParts[urlParts.length - 1] || '';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
+        } else {
+          statusMessage.textContent = `❌ Error: ${result.message}`;
+          statusMessage.style.color = "red";
+        }
+      } catch (error) {
+        statusMessage.textContent = "❌ Failed to connect to server";
+        statusMessage.style.color = "red";
+        console.error("Error:", error);
+      } finally {
+        // Reset button state
+        buttonText.textContent = "Download";
+        spinner.classList.add("hidden");
+      }
+    });
   </script>
 </body>
 </html>

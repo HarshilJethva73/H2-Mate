@@ -1,75 +1,45 @@
-from flask import Flask, request, jsonify, send_file, send_from_directory
-import yt_dlp
-from pytubefix import YouTube
-import os
-import time
-import logging
-import traceback
-
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+import yt_dlp
+import os
+import traceback
+import logging
+from pathlib import Path
+import platform
+import tempfile
+import shutil
+import zipfile
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes and origins
+CORS(app)  # Enable CORS for all routes
 
+# Logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger(__name__)
 
-cookies_dict = {}
-
-# Handle cookies.txt gracefully
-try:
-    if os.path.exists("cookies.txt"):
-        with open("cookies.txt", "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith('#'):
-                    continue
-                parts = line.split('\t')
-                if len(parts) >= 7:
-                    domain, _, path, secure, expiry, name, value = parts
-                    cookies_dict[name] = value
-    else:
-        logger.warning("cookies.txt not found. Proceeding without cookies.")
-except Exception as e:
-    logger.error(f"Failed to read cookies.txt: {e}")
-    logger.error(traceback.format_exc())
-
-import platform
-from pathlib import Path
-
-# Configuration
+# Determine download directory based on OS
 if platform.system() == "Windows":
-    DOWNLOAD_DIR = os.path.join(os.environ.get("USERPROFILE", ""), "Downloads")
-elif platform.system() == "Darwin":  # macOS
-    DOWNLOAD_DIR = os.path.join(Path.home(), "Downloads")
-else:  # Linux and others
-    DOWNLOAD_DIR = os.path.join(Path.home(), "Downloads")
-
+    DOWNLOAD_DIR = Path(os.environ.get("USERPROFILE", "")) / "Downloads"
+else:
+    DOWNLOAD_DIR = Path.home() / "Downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
-
-import tempfile
-from flask import send_file
 
 @app.route('/download', methods=['POST'])
 def download():
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(force=True) or {}
     url = data.get('url')
     format_type = data.get('format', 'video')
 
+    # Validate URL input
     if not url:
         return jsonify({'success': False, 'message': '❌ URL is required'}), 400
 
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
-            filename = None
-            filepath = None
-
+            # Common yt_dlp options
             ydl_opts = {
-                'format': 'bestvideo[ext=mp4][height<=2160]+bestaudio[ext=m4a]/best[ext=mp4]' if format_type == 'video' else 'bestaudio/best',
-                'outtmpl': os.path.join(tmpdir, '%(title)s.%(ext)s'),
                 'quiet': True,
                 'no_warnings': True,
-                'cookiefile': os.path.abspath('cookies.txt') if os.path.exists('cookies.txt') else None,
                 'geo_bypass': True,
                 'nocheckcertificate': True,
                 'http_headers': {
@@ -78,32 +48,83 @@ def download():
                 },
                 'logger': logger
             }
+            # Use cookies if available
+            cookies_path = os.path.abspath('cookies.txt')
+            if os.path.exists(cookies_path):
+                ydl_opts['cookiefile'] = cookies_path
 
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                filename = f"{info.get('title', 'video')}.{info.get('ext', 'mp4')}"
-                filepath = os.path.join(tmpdir, filename)
-                logger.info(f"Downloaded file path: {filepath}")
+            # Handle different formats
+            if format_type == 'video':
+                # Download video (highest quality mp4 up to 2160p)
+                ydl_opts['format'] = 'bestvideo[ext=mp4][height<=2160]+bestaudio[ext=m4a]/best[ext=mp4]'
+                ydl_opts['outtmpl'] = os.path.join(tmpdir, '%(title)s.%(ext)s')
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                # Move downloaded file to DOWNLOAD_DIR
                 files = os.listdir(tmpdir)
-                logger.info(f"Files in tmpdir after download: {files}")
-                if not os.path.exists(filepath):
-                    # Try to find the file in tmpdir if filename is different
-                    if files:
-                        filepath = os.path.join(tmpdir, files[0])
-                        filename = files[0]
-
-            if filepath and os.path.exists(filepath):
-                # Send file as attachment and show success message after download
-                # Instead of sending file directly, send JSON with download URL for frontend to handle
+                if not files:
+                    raise Exception("Download failed: no file found")
+                # Assuming first file is the video
+                filename = files[0]
+                filepath = os.path.join(tmpdir, filename)
+                dest_path = os.path.join(DOWNLOAD_DIR, filename)
+                shutil.move(filepath, dest_path)
                 download_url = f"/Downloads/{filename}"
-                return jsonify({
-                    'success': True,
-                    'message': '✅ Download complete!',
-                    'download_url': download_url
-                })
+                return jsonify({'success': True, 'message': '✅ Download complete!', 'download_url': download_url})
+
+            elif format_type == 'audio':
+                # Download audio and convert to mp3
+                ydl_opts['format'] = 'bestaudio/best'
+                ydl_opts['outtmpl'] = os.path.join(tmpdir, '%(title)s.%(ext)s')
+                ydl_opts['postprocessors'] = [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3',
+                    'preferredquality': '192'
+                }]
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                files = os.listdir(tmpdir)
+                if not files:
+                    raise Exception("Download failed: no file found")
+                filename = None
+                # Find .mp3 file if postprocessor changed extension
+                for f in files:
+                    if f.lower().endswith('.mp3'):
+                        filename = f
+                        break
+                # Fallback to any file
+                if not filename:
+                    filename = files[0]
+                filepath = os.path.join(tmpdir, filename)
+                dest_path = os.path.join(DOWNLOAD_DIR, filename)
+                shutil.move(filepath, dest_path)
+                download_url = f"/Downloads/{filename}"
+                return jsonify({'success': True, 'message': '✅ Download complete!', 'download_url': download_url})
+
+            elif format_type == 'playlist':
+                # Download entire playlist (videos with best quality)
+                ydl_opts['format'] = 'bestvideo+bestaudio/best'
+                ydl_opts['outtmpl'] = os.path.join(tmpdir, '%(title)s.%(ext)s')
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                files = os.listdir(tmpdir)
+                if not files:
+                    raise Exception("Download failed: no files found")
+                # Create a zip of all files
+                playlist_title = info.get('title') or info.get('playlist_title') or 'playlist'
+                zip_filename = f"{playlist_title}.zip"
+                zip_path = os.path.join(tmpdir, zip_filename)
+                with zipfile.ZipFile(zip_path, 'w') as zipf:
+                    for f in files:
+                        file_path = os.path.join(tmpdir, f)
+                        zipf.write(file_path, arcname=f)
+                dest_path = os.path.join(DOWNLOAD_DIR, zip_filename)
+                shutil.move(zip_path, dest_path)
+                download_url = f"/Downloads/{zip_filename}"
+                return jsonify({'success': True, 'message': '✅ Download complete!', 'download_url': download_url})
+
             else:
-                logger.error(f"File not found at path: {filepath}")
-                return jsonify({'success': False, 'message': '❌ Download failed: file not found'}), 500
+                return jsonify({'success': False, 'message': '❌ Invalid format selected'}), 400
 
     except Exception as e:
         logger.error(f"Download error: {e}")
@@ -113,19 +134,19 @@ def download():
             return jsonify({'success': False, 'message': '❌ Video is private'}), 400
         elif "Unsupported URL" in error_msg:
             return jsonify({'success': False, 'message': '❌ Invalid YouTube URL'}), 400
-        elif "This video is not available" in error_msg or "This content isn’t available" in error_msg:
+        elif "This video is not available" in error_msg or "This content isn't available" in error_msg:
             return jsonify({'success': False, 'message': '❌ Video is unavailable (removed, region-restricted, or private)'}), 400
         else:
             return jsonify({'success': False, 'message': f'❌ Download failed: {error_msg}'}), 500
 
-# Serve downloaded files for user download
-@app.route('/Downloads/<filename>')
+@app.route('/Downloads/<path:filename>')
 def serve_file(filename):
-    return send_from_directory(DOWNLOAD_DIR, filename, as_attachment=True)
+    # Serve files from the DOWNLOAD_DIR
+    return send_from_directory(str(DOWNLOAD_DIR), filename, as_attachment=True)
 
 @app.route('/')
-def home():
-    return send_file('index.html')
+def index():
+    return send_from_directory('.', 'index.html')
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
