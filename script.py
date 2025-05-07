@@ -1,3 +1,4 @@
+# script.py
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import yt_dlp
@@ -136,8 +137,11 @@ def download():
             return jsonify({'success': False, 'message': '❌ Invalid YouTube URL'}), 400
         elif "This video is not available" in error_msg or "This content isn't available" in error_msg:
             return jsonify({'success': False, 'message': '❌ Video is unavailable (removed, region-restricted, or private)'}), 400
+        elif error_msg:
+            # Generic catch-all for unexpected errors (HTTP 500)
+            return jsonify({'success': False, 'message': '❌ An unexpected error occurred. Please try again later.'}), 500
         else:
-            return jsonify({'success': False, 'message': f'❌ Download failed: {error_msg}'}), 500
+            return jsonify({'success': False, 'message': '❌ An unknown error occurred. Please try again later.'}), 500
 
 @app.route('/Downloads/<path:filename>')
 def serve_file(filename):

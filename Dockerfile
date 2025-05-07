@@ -1,23 +1,16 @@
-# Use an official Python runtime as a parent image
-FROM python:3.11-bullseye
+# Dockerfile
+FROM python:3.11-slim
 
-# Install ffmpeg and other dependencies
-RUN apt-get update && apt-get upgrade -y && apt-get install -y ffmpeg libffi-dev && rm -rf /var/lib/apt/lists/*
+# Install required system packages for ffmpeg and libraries
+RUN apt-get update \
+    && apt-get install -y ffmpeg libstdc++6 libffi-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Set the working directory in the container
 WORKDIR /app
+COPY script.py index.html ./
 
-# Copy the current directory contents into the container at /app
-COPY . /app
+# Install Python dependencies
+RUN pip install --no-cache-dir flask flask-cors yt_dlp gunicorn
 
-# Install any needed packages specified in requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Make port 8080 available to the world outside this container
 EXPOSE 8080
-
-# Define environment variable for Flask
-ENV FLASK_APP=script.py
-
-# Run the application
-CMD ["gunicorn", "script:app", "--bind", "0.0.0.0:8080", "--timeout", "300", "--worker-class", "gevent"]
+CMD ["gunicorn", "--timeout", "1200", "--workers", "2", "--bind", "0.0.0.0:8080", "script:app"]
