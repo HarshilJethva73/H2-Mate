@@ -211,7 +211,7 @@
       }
 
       // Show download started message
-      statusMessage.textContent = "⏳ Verifying and Processing the Link ...";
+      statusMessage.textContent = "⏳ Download started...";
       statusMessage.style.color = "var(--text-color)";
       
       // Show loading state
@@ -228,7 +228,7 @@
         const result = await response.json();
         
         if (result.success) {
-          statusMessage.textContent = "✅ Download started successfully!";
+          statusMessage.textContent = "✅ Downloaded successfully!";
           statusMessage.style.color = "green";
 
           // Trigger file download
