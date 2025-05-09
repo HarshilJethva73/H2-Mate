@@ -82,7 +82,6 @@ def download():
                     'preferredcodec': 'mp3',  # or 'wav'/'flac' for lossless
                     'preferredquality': '0'   # '0' = best quality in ffmpeg
                 }]
-                ydl_opts['postprocessor_args'] = ['-ar', '44100']  # optional: force 44.1 kHz output
             
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=True)
