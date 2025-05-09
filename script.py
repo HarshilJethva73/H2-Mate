@@ -73,15 +73,17 @@ def download():
                 download_url = f"/Downloads/{filename}"
                 return jsonify({'success': True, 'message': '✅ Download complete!', 'download_url': download_url})
 
-            elif format_type == 'audio':
-                # Download audio and convert to mp3
-                ydl_opts['format'] = 'bestaudio/best'
-                ydl_opts['outtmpl'] = os.path.join(tmpdir, '%(title)s.%(ext)s')
-                ydl_opts['postprocessors'] = [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '320'
-                }]
+                elif format_type == 'audio':
+            # Download best available audio (prefer lossless if available)
+            ydl_opts['format'] = 'bestaudio/best'
+            ydl_opts['outtmpl'] = os.path.join(tmpdir, '%(title)s.%(ext)s')
+            ydl_opts['postprocessors'] = [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',  # or 'wav'/'flac' for lossless
+                'preferredquality': '0'   # '0' = best quality in ffmpeg
+            }]
+            ydl_opts['postprocessor_args'] = ['-ar', '44100']  # optional: force 44.1 kHz output
+            
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=True)
                 files = os.listdir(tmpdir)
