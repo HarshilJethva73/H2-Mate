@@ -80,7 +80,7 @@ def download():
                 ydl_opts['postprocessors'] = [{
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'mp3',
-                    'preferredquality': '192'
+                    'preferredquality': '320'
                 }]
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=True)
@@ -104,7 +104,7 @@ def download():
 
             elif format_type == 'playlist':
                 # Download entire playlist (videos with best quality)
-                ydl_opts['format'] = 'bestvideo+bestaudio/best'
+                ydl_opts['format'] = 'bestvideo[ext=mp4][height<=2160]+bestaudio[ext=m4a]/best[ext=mp4]'
                 ydl_opts['outtmpl'] = os.path.join(tmpdir, '%(title)s.%(ext)s')
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=True)
