@@ -80,7 +80,7 @@ def download():
                 ydl_opts['postprocessors'] = [{
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'mp3',  # or 'wav'/'flac' for lossless
-                    'preferredquality': '0'   # '0' = best quality in ffmpeg
+                    'preferredquality': '320'   # '0' = best quality in ffmpeg
                 }]
             
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
