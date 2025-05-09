@@ -1,3 +1,4 @@
+# script.py
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import yt_dlp
@@ -43,16 +44,15 @@ def download():
                 'geo_bypass': True,
                 'nocheckcertificate': True,
                 'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                                  'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     'Referer': 'https://www.youtube.com/'
                 },
                 'logger': logger
             }
             # Use cookies if available
-            cookie_file = Path(__file__).resolve().parent / 'cookies.txt'
-            if cookie_file.exists():
-                ydl_opts['cookiefile'] = str(cookie_file)
+            cookies_path = os.path.abspath('cookies.txt')
+            if os.path.exists(cookies_path):
+                ydl_opts['cookiefile'] = cookies_path
 
             # Handle different formats
             if format_type == 'video':
@@ -80,7 +80,7 @@ def download():
                 ydl_opts['postprocessors'] = [{
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'mp3',
-                    'preferredquality': '320'
+                    'preferredquality': '192'
                 }]
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=True)
@@ -104,7 +104,7 @@ def download():
 
             elif format_type == 'playlist':
                 # Download entire playlist (videos with best quality)
-                ydl_opts['format'] = 'bestvideo[ext=mp4][height<=2160]+bestaudio[ext=m4a]/best[ext=mp4]'
+                ydl_opts['format'] = 'bestvideo+bestaudio/best'
                 ydl_opts['outtmpl'] = os.path.join(tmpdir, '%(title)s.%(ext)s')
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=True)
@@ -140,8 +140,6 @@ def download():
         elif error_msg:
             # Generic catch-all for unexpected errors (HTTP 500)
             return jsonify({'success': False, 'message': '❌ An unexpected error occurred. Please try again later.'}), 500
-        else:
-            return jsonify({'success': False, 'message': '❌ An unknown error occurred.'}), 500
 
 @app.route('/Downloads/<path:filename>')
 def serve_file(filename):
@@ -153,4 +151,5 @@ def index():
     return send_from_directory('.', 'index.html')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
