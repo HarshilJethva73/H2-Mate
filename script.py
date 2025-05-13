@@ -50,9 +50,14 @@ def download():
                 'logger': logger
             }
             # Use cookies if available
+            # Check if the cookies file exists and is being used
             cookies_path = os.path.abspath('cookies.txt')
             if os.path.exists(cookies_path):
+                logger.info(f"Using cookies from: {cookies_path}")
                 ydl_opts['cookiefile'] = cookies_path
+            else:
+                logger.warning("No cookies file found, will proceed without cookies.")
+
 
             # Handle different formats
             if format_type == 'video':
