@@ -18,12 +18,16 @@ CORS(app)  # Enable CORS for all routes
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger(__name__)
 
-# Determine download directory based on OS
-if platform.system() == "Windows":
+# ...existing code...
+# Determine download directory based on OS/environment
+if "RAILWAY_STATIC_URL" in os.environ or os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RAILWAY_PROJECT_ID"):
+    DOWNLOAD_DIR = Path("/tmp")
+elif platform.system() == "Windows":
     DOWNLOAD_DIR = Path(os.environ.get("USERPROFILE", "")) / "Downloads"
 else:
     DOWNLOAD_DIR = Path.home() / "Downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+# ...existing code...
 
 @app.route('/download', methods=['POST'])
 def download():

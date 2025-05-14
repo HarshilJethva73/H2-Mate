@@ -7,7 +7,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY script.py index.html ./
+COPY script.py index.html cookies.txt ./
 
 # Install Python dependencies
 RUN pip install --no-cache-dir flask flask-cors yt_dlp gunicorn
