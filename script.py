@@ -2,7 +2,7 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import yt_dlp
-import os
+import os, base64
 import traceback
 import logging
 from pathlib import Path
@@ -18,8 +18,15 @@ CORS(app)  # Enable CORS for all routes
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger(__name__)
 
-# ...existing code...
-# Determine download directory based on OS/environment
+# Write cookies.txt from Railway secret
+cookie_data = os.getenv("YTDLP_COOKIES", "")
+if cookie_data:
+    with open("cookies.txt", "w", newline="\n") as f:
+        f.write(cookie_data)
+
+# DOWNLOAD_DIR = os.path.join(os.getcwd(), "Downloads")
+# os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+
 if "RAILWAY_STATIC_URL" in os.environ or os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RAILWAY_PROJECT_ID"):
     DOWNLOAD_DIR = Path("/tmp")
 elif platform.system() == "Windows":
@@ -27,7 +34,7 @@ elif platform.system() == "Windows":
 else:
     DOWNLOAD_DIR = Path.home() / "Downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
-# ...existing code...
+
 
 @app.route('/download', methods=['POST'])
 def download():
